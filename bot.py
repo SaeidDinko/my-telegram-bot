@@ -372,7 +372,7 @@ def callback_handler(call):
                 'full_name': f"{user_data.get(target_user_id, {}).get('نام', '')} {user_data.get(target_user_id, {}).get('نام خانوادگی', '')}"
             }
             bot.edit_message_text(f'📬 اطلاعات کاربر {target_user_id}:\n{call.message.text}\n\n✅ تأیید شده توسط ادمین', ADMIN_ID, call.message.message_id)
-            bot.send_message(target_user_id, '🎉 اطلاعات شما توسط ادمین تأیید شد!')
+            bot.send_message(target_user_id, '🎉 اطلاعات شما توسط ادمین تأیید شد! میتوانین تاریخ تقریبی آزمون کتبی خودرا در بخش سوالات متداول ببینید')
             if target_user_id in user_data:
                 del user_data[target_user_id]
             if target_user_id in admin_messages:
@@ -402,7 +402,6 @@ def callback_handler(call):
             response = """
             ⏰ زمان آزمون کتبی من کی هست؟
             زمان تقریبی شما وقتی نمایش داده میشود که اطلاعات خودرا در قسمت اطلاعات اولیه تکمیل کرده باشید
-            زمان آزمون شما توسط سازمان فنی و حرفه ای تعیین می‌گردد و معمولا بعد از پرداخت حق تعرفه ۱ الی ۲ ماه زمان خواهد برد.
             """
         bot.edit_message_text(response, call.message.chat.id, call.message.message_id, reply_markup=back_to_main_faq_keyboard())
     
@@ -603,4 +602,5 @@ try:
 except Exception as e:
 
     logger.error(f"خطای جدی در اجرای ربات: {e}")
+
 
