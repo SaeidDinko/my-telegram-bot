@@ -12,7 +12,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # توکن ربات (بعدا تغییر بده)
-TOKEN = '8477954060:AAF0XfLfowQvpIanCIbkAMzh1f45uTFsn3U'
+TOKEN = '7959686586:AAHFT-aOJB0xzm5pf4P36z28A2b9w3-CvHU'
 bot = telebot.TeleBot(TOKEN)
 
 # آیدی ادمین
@@ -599,4 +599,5 @@ try:
     logger.info("✅ ربات آموزشگاه ایده پاژ در حال اجراست...")
     bot.infinity_polling()
 except Exception as e:
+
     logger.error(f"خطای جدی در اجرای ربات: {e}")
