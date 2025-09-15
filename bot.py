@@ -354,7 +354,7 @@ def callback_handler(call):
             sent_message = bot.send_message(ADMIN_ID, f'📬 اطلاعات جدید از کاربر {user_id}:\n{info}', reply_markup=markup)
             admin_messages[user_id] = sent_message.message_id
             bot.send_message(call.message.chat.id, '🎉 اطلاعات با موفقیت برای ادمین ارسال شد! منتظر تأیید باشید.')
-            bot.send_message(call.message.chat.id, 'برای ادامه، دکمه زیر را بزنید:', reply_markup=get_start_keyboard())
+            bot.send_message(call.message.chat.id, 'اطلاعات شما ثبت شدو طی 24 ساعت آینده توسط ادمین اطلاع رسانی خواهد شد:', reply_markup=get_start_keyboard())
         except Exception as e:
             logger.error(f"خطا در ارسال به ادمین: {e}")
             bot.send_message(call.message.chat.id, '⚠️ خطا در ارسال اطلاعات به ادمین. لطفا دوباره تلاش کنید.')
@@ -602,5 +602,6 @@ try:
 except Exception as e:
 
     logger.error(f"خطای جدی در اجرای ربات: {e}")
+
 
 
