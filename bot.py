@@ -11,8 +11,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# توکن ربات
-TOKEN = '7959686586:AAHFT-aOJB0xzm5pf4P36z28A2b9w3-CvHU'
+# توکن ربات (بعدا تغییر بده)
+TOKEN = '8477954060:AAF0XfLfowQvpIanCIbkAMzh1f45uTFsn3U'
 bot = telebot.TeleBot(TOKEN)
 
 # آیدی ادمین
@@ -232,7 +232,7 @@ def start(message):
     user_id = message.from_user.id
     if user_id not in user_data:
         user_data[user_id] = {}
-    bot.send_message(message.chat.id, '🎉 خوش آمدید! لطفا برای وارد کردن یا ویرایش اطلاعات یا مشاهده سوالات متداول، یکی از دکمه‌های زیر را انتخاب کنید:', reply_markup=get_start_keyboard())
+    bot.send_message(message.chat.id, '🎉 خوش آمدید! برای وارد کردن یا ویرایش اطلاعات یا مشاهده سوالات متداول، یکی از دکمه‌های زیر را انتخاب کنید:', reply_markup=get_start_keyboard())
 
 # هندلر برای پیام‌های متنی
 @bot.message_handler(func=lambda message: True)
@@ -252,7 +252,7 @@ def handle_message(message):
     
     if text == '📚 سوالات متداول':
         welcome_text = """
-        🌟 برای دقت بیشتر در پاسخگویی ابتدا اطلاعات اولیه را تکمیل نمائید 🌟
+        🌟 به ربات آموزشگاه فنی و حرفه ای ایده پاژ خوش آمدید! 🌟
         برای دریافت پاسخ سوالات پرتکرار، یکی از گزینه‌های زیر را انتخاب کنید:
         """
         bot.send_message(message.chat.id, welcome_text, reply_markup=main_faq_keyboard())
@@ -354,7 +354,7 @@ def callback_handler(call):
             sent_message = bot.send_message(ADMIN_ID, f'📬 اطلاعات جدید از کاربر {user_id}:\n{info}', reply_markup=markup)
             admin_messages[user_id] = sent_message.message_id
             bot.send_message(call.message.chat.id, '🎉 اطلاعات با موفقیت برای ادمین ارسال شد! منتظر تأیید باشید.')
-            bot.send_message(call.message.chat.id, 'اطلاعات شما ثبت شدو طی 24 ساعت آینده توسط ادمین اطلاع رسانی خواهد شد:', reply_markup=get_start_keyboard())
+            bot.send_message(call.message.chat.id, 'برای ادامه، دکمه زیر را بزنید:', reply_markup=get_start_keyboard())
         except Exception as e:
             logger.error(f"خطا در ارسال به ادمین: {e}")
             bot.send_message(call.message.chat.id, '⚠️ خطا در ارسال اطلاعات به ادمین. لطفا دوباره تلاش کنید.')
@@ -372,7 +372,7 @@ def callback_handler(call):
                 'full_name': f"{user_data.get(target_user_id, {}).get('نام', '')} {user_data.get(target_user_id, {}).get('نام خانوادگی', '')}"
             }
             bot.edit_message_text(f'📬 اطلاعات کاربر {target_user_id}:\n{call.message.text}\n\n✅ تأیید شده توسط ادمین', ADMIN_ID, call.message.message_id)
-            bot.send_message(target_user_id, '🎉 اطلاعات شما توسط ادمین تأیید شد! میتوانین تاریخ تقریبی آزمون کتبی خودرا در بخش سوالات متداول ببینید')
+            bot.send_message(target_user_id, '🎉 اطلاعات شما توسط ادمین تأیید شد!')
             if target_user_id in user_data:
                 del user_data[target_user_id]
             if target_user_id in admin_messages:
@@ -393,15 +393,14 @@ def callback_handler(call):
             response = f"""
             ⏰ زمان آزمون کتبی من کی هست؟
             
-            زمان آزمون  "{full_name}" بعد از پرداخت حق تعرفه توسط سازمان فنی و حرفه ای تعیین می‌گردد.
+            زمان آزمون شما "{full_name}" بعد از پرداخت حق تعرفه توسط سازمان فنی و حرفه ای تعیین می‌گردد.
             تا زمان تقریبی آزمون شما {days_remaining} روز مانده است. همکاران ما با شما تماس می‌گیرند.
-            اگر بیشتر از این زمان منتظر بودید با شماره مسئول فنی و حرفه ای تماس بگیرید
-            در صورتی که تعرفه خدمات آموزشی را پرداخت نکرده باشید زمان آزمون برای شما تعیین نخواهد شد
             """
         else:
             response = """
             ⏰ زمان آزمون کتبی من کی هست؟
-            زمان تقریبی شما وقتی نمایش داده میشود که اطلاعات خودرا در قسمت اطلاعات اولیه تکمیل کرده باشید
+            
+            زمان آزمون شما توسط سازمان فنی و حرفه ای تعیین می‌گردد و معمولا بعد از پرداخت حق تعرفه ۱ الی ۲ ماه زمان خواهد برد.
             """
         bot.edit_message_text(response, call.message.chat.id, call.message.message_id, reply_markup=back_to_main_faq_keyboard())
     
@@ -499,23 +498,23 @@ def callback_handler(call):
         response = """
         📞 شماره تماس پرسنل ایده پاژ
         
-        آقای سهیلی: [09359202990]    (tel:+989359202990)
+        آقای سهیلی: [09359202990](tel:+989359202990)
         ________________________
-        آقای عمرانی: [09355251039]   (tel:+989355251039)
+        آقای عمرانی: [09355251039](tel:+989355251039)
         ________________________
-        آقای سلطانی: [09376255707]   (tel:+989376255707)
+        آقای سلطانی: [09376255707](tel:+989376255707)
         ________________________
-        آقای چهارمحالی: [09152093244] (tel:+989152093244)
+        آقای چهارمحالی: [09152093244](tel:+989152093244)
         ________________________
-        آقای ریاضی: [09330761741]   (tel:+989330761741)
+        آقای ریاضی: [09330761741](tel:+989330761741)
         ________________________
-        آقای صالح آبادی: [09389791122] (tel:+989389791122)
+        آقای صالح آبادی: [09389791122](tel:+989389791122)
         ________________________
-        آقای اژدری: [09155465113]    (tel:+989155465113)
+        آقای اژدری: [09155465113](tel:+989155465113)
         ________________________
-        خانم سیار: [09010702940]      (tel:+989010702940)
+        خانم سیار: [09010702940](tel:+989010702940)
         ________________________
-        آقای شبرنگی: [09051092940]    (tel:+989051092940)
+        آقای شبرنگی: [09051092940](tel:+989051092940)
         """
         bot.edit_message_text(response, call.message.chat.id, call.message.message_id, parse_mode='Markdown', reply_markup=back_to_main_faq_keyboard())
     
@@ -524,7 +523,7 @@ def callback_handler(call):
         response = """
         👨‍💼 شماره تماس مسئول فنی و حرفه‌ای
         
-        دینکو: [09301024593]    (tel:+989301024593)
+        دینکو: [09301024593](tel:+989301024593)
         
         لطفا در ساعت ۹ الی ۱۴ تماس بگیرید.
         """
@@ -590,7 +589,7 @@ def callback_handler(call):
     elif data == 'main_menu':
         bot.answer_callback_query(call.id)
         welcome_text = """
-        🌟 برای دقت بیشتر در پاسخگویی ابتدا اطلاعات اولیه را تکمیل نمائید! 🌟
+        🌟 سلام من پاسخگوی هوشمند آموزشگاه ایده پاژ هستم! 🌟
         برای دریافت پاسخ سوالات خود، یکی از گزینه‌های زیر را انتخاب کنید:
         """
         bot.edit_message_text(welcome_text, call.message.chat.id, call.message.message_id, reply_markup=main_faq_keyboard())
@@ -600,8 +599,4 @@ try:
     logger.info("✅ ربات آموزشگاه ایده پاژ در حال اجراست...")
     bot.infinity_polling()
 except Exception as e:
-
     logger.error(f"خطای جدی در اجرای ربات: {e}")
-
-
-
