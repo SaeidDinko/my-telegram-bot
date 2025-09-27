@@ -3,6 +3,7 @@ from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 from datetime import datetime, timedelta
 import jdatetime
 import logging
+import os
 
 # تنظیمات logging
 logging.basicConfig(
@@ -11,12 +12,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# توکن ربات (بعدا تغییر بده)
-TOKEN = '8477954060:AAF0XfLfowQvpIanCIbkAMzh1f45uTFsn3U'
+# توکن ربات و آیدی ادمین از متغیرهای محیطی
+TOKEN = os.environ['TOKEN']
+ADMIN_ID = int(os.environ['ADMIN_ID'])
 bot = telebot.TeleBot(TOKEN)
-
-# آیدی ادمین
-ADMIN_ID = 7418672521
 
 # دیکشنری برای ذخیره اطلاعات کاربران (کلید: user_id)
 user_data = {}
@@ -170,6 +169,15 @@ def back_to_main_faq_keyboard():
         [InlineKeyboardButton("🔙 بازگشت به منوی اصلی سوالات", callback_data="main_menu")]
     ]
     return InlineKeyboardMarkup(keyboard)
+
+# تابع برای ساخت inline keyboard تأیید/رد برای ادمین
+def get_admin_approval_keyboard(user_id):
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton('✅ تائید شد', callback_data=f'approve_{user_id}'),
+        InlineKeyboardButton('❌ رد شد', callback_data=f'reject_{user_id}')
+    )
+    return markup
 
 # تابع برای دریافت فیلد بعدی
 def get_next_field(user_id):
@@ -347,11 +355,26 @@ def callback_handler(call):
             bot.send_message(call.message.chat.id, error_msg + '\nلطفا اطلاعات را تکمیل یا اصلاح کنید.', reply_markup=get_inline_keyboard(user_id))
             return
         
-        info = '\n'.join([f'{k}: {v}' if k != 'دوره انتخابی' else f'{k}: {", ".join([COURSE_CODE_TO_NAME[code] for code in v])}' for k, v in user_data[user_id].items()])
-        markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton('✅ تأیید اطلاعات', callback_data=f'approve_{user_id}'))
+        # ساخت پیام برای ادمین با اطلاعات کاربر
+        user_info = user_data[user_id]
+        username = f"@{call.from_user.username}" if call.from_user.username else "ندارد"
+        
+        info = f"""📬 **اطلاعات جدید از کاربر**
+👤 **آیدی کاربر:** `{user_id}`
+📱 **Username:** {username}
+📛 **نام کامل:** {user_info.get('نام', '')} {user_info.get('نام خانوادگی', '')}
+
+📋 **جزئیات ثبت‌نام:**
+"""
+        for k, v in user_info.items():
+            if k != 'دوره انتخابی':
+                info += f"• **{k}:** {v}\n"
+            else:
+                courses = ', '.join([COURSE_CODE_TO_NAME[code] for code in v])
+                info += f"• **{k}:** {courses}\n"
+        
         try:
-            sent_message = bot.send_message(ADMIN_ID, f'📬 اطلاعات جدید از کاربر {user_id}:\n{info}', reply_markup=markup)
+            sent_message = bot.send_message(ADMIN_ID, info, parse_mode='Markdown', reply_markup=get_admin_approval_keyboard(user_id))
             admin_messages[user_id] = sent_message.message_id
             bot.send_message(call.message.chat.id, '🎉 اطلاعات با موفقیت برای ادمین ارسال شد! منتظر تأیید باشید.')
             bot.send_message(call.message.chat.id, 'برای ادامه، دکمه زیر را بزنید:', reply_markup=get_start_keyboard())
@@ -371,7 +394,7 @@ def callback_handler(call):
                 'timestamp': datetime.now(),
                 'full_name': f"{user_data.get(target_user_id, {}).get('نام', '')} {user_data.get(target_user_id, {}).get('نام خانوادگی', '')}"
             }
-            bot.edit_message_text(f'📬 اطلاعات کاربر {target_user_id}:\n{call.message.text}\n\n✅ تأیید شده توسط ادمین', ADMIN_ID, call.message.message_id)
+            bot.edit_message_text(f'✅ *تأیید شده توسط ادمین*\n\n{call.message.text}', ADMIN_ID, call.message.message_id, parse_mode='Markdown')
             bot.send_message(target_user_id, '🎉 اطلاعات شما توسط ادمین تأیید شد!')
             if target_user_id in user_data:
                 del user_data[target_user_id]
@@ -381,6 +404,21 @@ def callback_handler(call):
             logger.error(f"خطا در تأیید اطلاعات توسط ادمین: {e}")
             bot.send_message(call.message.chat.id, '⚠️ خطا در تأیید اطلاعات. لطفا دوباره تلاش کنید.')
     
+    elif data.startswith('reject_'):
+        bot.answer_callback_query(call.id)
+        target_user_id = int(data.split('_')[1])
+        if call.from_user.id != ADMIN_ID:
+            bot.send_message(call.message.chat.id, '⚠️ فقط ادمین می‌تواند اطلاعات را رد کند!')
+            return
+        try:
+            bot.edit_message_text(f'❌ *رد شده توسط ادمین*\n\n{call.message.text}', ADMIN_ID, call.message.message_id, parse_mode='Markdown')
+            bot.send_message(target_user_id, '❌ متأسفانه اطلاعات شما توسط ادمین رد شد. لطفا اطلاعات را اصلاح کنید و دوباره ارسال نمایید.')
+            # اطلاعات کاربر پاک نمی‌شود تا بتواند اصلاح کند
+        except Exception as e:
+            logger.error(f"خطا در رد اطلاعات توسط ادمین: {e}")
+            bot.send_message(call.message.chat.id, '⚠️ خطا در رد اطلاعات. لطفا دوباره تلاش کنید.')
+    
+    # بقیه هندلرهای سوالات متداول (همانند قبل)...
     elif data == 'exam_time':
         bot.answer_callback_query(call.id)
         if user_id in approval_timestamps:
@@ -594,10 +632,16 @@ def callback_handler(call):
         """
         bot.edit_message_text(welcome_text, call.message.chat.id, call.message.message_id, reply_markup=main_faq_keyboard())
 
-# شروع ربات
+# شروع ربات با حل مشکل 409
 if __name__ == "__main__":
     try:
         logger.info("✅ ربات آموزشگاه ایده پاژ در حال اجراست...")
+        
+        # حذف webhook قبلی (برای اطمینان)
+        bot.remove_webhook()
+        
+        # استفاده از polling با timeout کوتاه‌تر
         bot.infinity_polling(timeout=10, long_polling_timeout=5)
+        
     except Exception as e:
         logger.error(f"خطای جدی در اجرای ربات: {e}")
