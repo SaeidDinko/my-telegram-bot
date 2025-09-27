@@ -26,6 +26,9 @@ admin_messages = {}
 # دیکشنری برای ذخیره زمان تأیید کاربران
 approval_timestamps = {}
 
+# دیکشنری برای ذخیره تاریخ‌های آزمون
+exam_dates = {}
+
 # لیست فیلدها به ترتیب برای دریافت خودکار
 FIELDS = [
     'نام', 'نام خانوادگی', 'کد ملی', 'نام پدر', 'تاریخ تولد', 'شماره تماس', 'دوره انتخابی'
@@ -179,6 +182,13 @@ def get_admin_approval_keyboard(user_id):
     )
     return markup
 
+# تابع برای ساخت کیبورد تاریخ آزمون برای ادمین
+def get_exam_date_keyboard(user_id):
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(InlineKeyboardButton('📅 وارد کردن تاریخ آزمون', callback_data=f'set_exam_date_{user_id}'))
+    markup.add(InlineKeyboardButton('➡️ رد کردن این مرحله', callback_data=f'skip_exam_date_{user_id}'))
+    return markup
+
 # تابع برای دریافت فیلد بعدی
 def get_next_field(user_id):
     user_info = user_data.get(user_id, {})
@@ -264,6 +274,63 @@ def handle_message(message):
         برای دریافت پاسخ سوالات پرتکرار، یکی از گزینه‌های زیر را انتخاب کنید:
         """
         bot.send_message(message.chat.id, welcome_text, reply_markup=main_faq_keyboard())
+        return
+    
+    # هندلر برای دریافت تاریخ آزمون از ادمین
+    if user_id in user_states and user_states[user_id].startswith('set_exam_date_'):
+        if user_id != ADMIN_ID:
+            return
+        
+        target_user_id = int(user_states[user_id].split('_')[3])
+        exam_date = message.text.strip()
+        
+        # بررسی فرمت تاریخ
+        try:
+            year, month, day = map(int, exam_date.split('/'))
+            if not (1400 <= year <= 1500 and 1 <= month <= 12 and 1 <= day <= 31):
+                bot.send_message(ADMIN_ID, '⚠️ تاریخ نامعتبر است! لطفا دوباره وارد کنید (مثال: 1404/06/15):')
+                return
+        except:
+            bot.send_message(ADMIN_ID, '⚠️ فرمت تاریخ اشتباه است! لطفا دوباره وارد کنید (مثال: 1404/06/15):')
+            return
+        
+        try:
+            # ذخیره تاریخ آزمون
+            exam_dates[target_user_id] = exam_date
+            
+            # ارسال پیام به کاربر
+            user_info = user_data.get(target_user_id, {})
+            course_name = ', '.join([COURSE_CODE_TO_NAME[code] for code in user_info.get('دوره انتخابی', [])])
+            
+            message_to_user = f"""سلام آزمون فنی و حرفه ای
+
+استاندارد دوره: {course_name}
+
+تاریخ آزمون: {exam_date}
+
+کارت ورود به جلسه، 1 روز قبل از آزمون صادر میشود و فقط روزِ قبل از آزمون میتوانید اقدام به دانلود کارت کنید. 
+
+اطلاعات محل برگزاری و ساعت برگزاری در کارت ورود به جلسه میباشد
+
+لینک کارت ورود به جلسه
+(https://azmoon.portaltvto.com/card/card/index/1/80) 
+
+#آزمون_کتبی"""
+
+            bot.send_message(target_user_id, message_to_user)
+            bot.send_message(ADMIN_ID, f'✅ پیام با تاریخ {exam_date} برای کاربر ارسال شد.')
+            
+            # پاک کردن حالت و اطلاعات کاربر
+            del user_states[user_id]
+            if target_user_id in user_data:
+                del user_data[target_user_id]
+            if target_user_id in admin_messages:
+                del admin_messages[target_user_id]
+                
+        except Exception as e:
+            logger.error(f"خطا در ارسال پیام به کاربر: {e}")
+            bot.send_message(ADMIN_ID, '⚠️ خطا در ارسال پیام به کاربر.')
+        
         return
     
     if user_id in user_states:
@@ -394,12 +461,16 @@ def callback_handler(call):
                 'timestamp': datetime.now(),
                 'full_name': f"{user_data.get(target_user_id, {}).get('نام', '')} {user_data.get(target_user_id, {}).get('نام خانوادگی', '')}"
             }
-            bot.edit_message_text(f'✅ *تأیید شده توسط ادمین*\n\n{call.message.text}', ADMIN_ID, call.message.message_id, parse_mode='Markdown')
-            bot.send_message(target_user_id, '🎉 اطلاعات شما توسط ادمین تأیید شد!')
-            if target_user_id in user_data:
-                del user_data[target_user_id]
-            if target_user_id in admin_messages:
-                del admin_messages[target_user_id]
+            
+            # ویرایش پیام قبلی و اضافه کردن کیبورد تاریخ آزمون
+            bot.edit_message_text(
+                f'✅ *تأیید شده توسط ادمین*\n\n{call.message.text}\n\n📝 حالا تاریخ آزمون کتبی رو برای کاربر تنظیم کن:',
+                ADMIN_ID, 
+                call.message.message_id, 
+                parse_mode='Markdown', 
+                reply_markup=get_exam_date_keyboard(target_user_id)
+            )
+            
         except Exception as e:
             logger.error(f"خطا در تأیید اطلاعات توسط ادمین: {e}")
             bot.send_message(call.message.chat.id, '⚠️ خطا در تأیید اطلاعات. لطفا دوباره تلاش کنید.')
@@ -411,14 +482,75 @@ def callback_handler(call):
             bot.send_message(call.message.chat.id, '⚠️ فقط ادمین می‌تواند اطلاعات را رد کند!')
             return
         try:
-            bot.edit_message_text(f'❌ *رد شده توسط ادمین*\n\n{call.message.text}', ADMIN_ID, call.message.message_id, parse_mode='Markdown')
+            bot.edit_message_text(
+                f'❌ *رد شده توسط ادمین*\n\n{call.message.text}',
+                ADMIN_ID, 
+                call.message.message_id, 
+                parse_mode='Markdown'
+            )
             bot.send_message(target_user_id, '❌ متأسفانه اطلاعات شما توسط ادمین رد شد. لطفا اطلاعات را اصلاح کنید و دوباره ارسال نمایید.')
             # اطلاعات کاربر پاک نمی‌شود تا بتواند اصلاح کند
         except Exception as e:
             logger.error(f"خطا در رد اطلاعات توسط ادمین: {e}")
             bot.send_message(call.message.chat.id, '⚠️ خطا در رد اطلاعات. لطفا دوباره تلاش کنید.')
     
-    # بقیه هندلرهای سوالات متداول (همانند قبل)...
+    elif data.startswith('set_exam_date_'):
+        bot.answer_callback_query(call.id)
+        target_user_id = int(data.split('_')[3])
+        if call.from_user.id != ADMIN_ID:
+            bot.send_message(call.message.chat.id, '⚠️ فقط ادمین می‌تواند تاریخ آزمون تنظیم کند!')
+            return
+        
+        # ذخیره حالت برای دریافت تاریخ از ادمین
+        user_states[ADMIN_ID] = f'set_exam_date_{target_user_id}'
+        bot.send_message(ADMIN_ID, '📅 لطفا تاریخ آزمون کتبی را وارد کنید (فرمت: سال/ماه/روز، مثال: 1404/06/15):')
+    
+    elif data.startswith('skip_exam_date_'):
+        bot.answer_callback_query(call.id)
+        target_user_id = int(data.split('_')[3])
+        if call.from_user.id != ADMIN_ID:
+            bot.send_message(call.message.chat.id, '⚠️ فقط ادمین می‌تواند این عمل را انجام دهد!')
+            return
+        
+        try:
+            # ارسال پیام به کاربر بدون تاریخ
+            user_info = user_data.get(target_user_id, {})
+            course_name = ', '.join([COURSE_CODE_TO_NAME[code] for code in user_info.get('دوره انتخابی', [])])
+            
+            message_to_user = f"""سلام آزمون فنی و حرفه ای
+
+استاندارد دوره: {course_name}
+
+تاریخ آزمون: متعاقبا اعلام می‌شود
+
+کارت ورود به جلسه، 1 روز قبل از آزمون صادر میشود و فقط روزِ قبل از آزمون میتوانید اقدام به دانلود کارت کنید. 
+
+اطلاعات محل برگزاری و ساعت برگزاری در کارت ورود به جلسه میباشد
+
+لینک کارت ورود به جلسه
+(https://azmoon.portaltvto.com/card/card/index/1/80) 
+
+#آزمون_کتبی"""
+
+            bot.send_message(target_user_id, message_to_user)
+            bot.edit_message_text(
+                f'✅ *پیام بدون تاریخ برای کاربر ارسال شد*\n\n{call.message.text}',
+                ADMIN_ID, 
+                call.message.message_id, 
+                parse_mode='Markdown'
+            )
+            
+            # پاک کردن اطلاعات کاربر
+            if target_user_id in user_data:
+                del user_data[target_user_id]
+            if target_user_id in admin_messages:
+                del admin_messages[target_user_id]
+                
+        except Exception as e:
+            logger.error(f"خطا در ارسال پیام به کاربر: {e}")
+            bot.send_message(ADMIN_ID, '⚠️ خطا در ارسال پیام به کاربر.')
+    
+    # بقیه هندلرهای سوالات متداول
     elif data == 'exam_time':
         bot.answer_callback_query(call.id)
         if user_id in approval_timestamps:
