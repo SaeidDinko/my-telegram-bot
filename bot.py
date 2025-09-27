@@ -595,8 +595,9 @@ def callback_handler(call):
         bot.edit_message_text(welcome_text, call.message.chat.id, call.message.message_id, reply_markup=main_faq_keyboard())
 
 # شروع ربات
-try:
-    logger.info("✅ ربات آموزشگاه ایده پاژ در حال اجراست...")
-    bot.infinity_polling()
-except Exception as e:
-    logger.error(f"خطای جدی در اجرای ربات: {e}")
+if __name__ == "__main__":
+    try:
+        logger.info("✅ ربات آموزشگاه ایده پاژ در حال اجراست...")
+        bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    except Exception as e:
+        logger.error(f"خطای جدی در اجرای ربات: {e}")
